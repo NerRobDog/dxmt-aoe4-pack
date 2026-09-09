@@ -12,7 +12,7 @@ Three pieces, all with source, all inside the pack (~450 MB unpacked):
    encoding off the game thread, per-frame CSV log.
 2. **Wine engine with the AoE IV Rosetta patch** (`Engine/`, LGPL 2.1) — our own
    build of CodeWeavers' CrossOver 26.3 / Wine 11.0 source carrying **Marc Ibrahim's
-   patch** (published with GameToMac 0.1.5-alpha), the part that makes the game
+   patch** (published under LGPL), the part that makes the game
    *playable* under Rosetta: invalid-opcode exceptions the anti-tamper uses as control
    flow are delivered in-process instead of through the kernel and Rosetta's exception
    server (~14k kernel traps/s → ~200 per session), and the generated code fragments
@@ -26,8 +26,7 @@ Three pieces, all with source, all inside the pack (~450 MB unpacked):
    not sign in under this engine (`THIRD_PARTY/wine-aoe-patch-syscall-bool.diff`,
    `THIRD_PARTY/wine-aoe-patch-wbemprox.diff`).
 3. **x87sidecar** (`Helpers/`, MIT, by athei — fork of Lifeisawful/rosettax87_jit)
-   — our build from the MIT source published with GameToMac (it carries the
-   softfault decoder hook). Attaches cooperatively to the game process and hooks
+   — our build from the MIT source that carries the softfault decoder hook. Attaches cooperatively to the game process and hooks
    Rosetta's decoder in that process only. No SIP changes, no root, nothing
    system-wide. Source: `https://github.com/NerRobDog/x87sidecar`.
 
@@ -59,8 +58,8 @@ panel refresh collapses (50 on a 60 Hz panel → 30 fps); the CPU pacer does not
 - **Tied to one game build.** The Wine patch hard-codes addresses for `RelicCardinal.exe`
   sha256 `5380c577…`; `setup.sh` refuses other builds. A game update means waiting for
   an updated patch + pack.
-- The engine is built from the patch source published with **GameToMac 0.1.5-alpha**
-  (source hashes in `THIRD_PARTY.md`); the pack itself does not need GameToMac.
+- The engine is built from Marc Ibrahim's published patch source (hashes in
+  `THIRD_PARTY.md`); the pack needs nothing outside itself and Steam.
 - Residual 10–15 ms blips ~1/s on the HUD: code fragments the cache refuses. Our
   relocator extension (near conditional branches) shrinks the refused set; its
   in-game effect is not measured yet.
