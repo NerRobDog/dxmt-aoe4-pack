@@ -38,7 +38,7 @@ The engine, the helper and the x86_64 libraries the engine needs (freetype, gnut
 inotify, …, in `deps/`) are in the pack; the only download is Valve's own Steam
 installer in the no-CrossOver case. See `INSTALL.md`.
 
-## Numbers (1v1 skirmish vs AI, DXMT HUD + frame log)
+## Numbers (1v1 skirmish vs AI; the multi-hour runs: online 2v2 between two Macs on this pack vs AI — DXMT HUD + frame log)
 
 | | CrossOver 26.3 + DXMT d3d12 (before) | this pack |
 |---|---|---|
@@ -64,7 +64,7 @@ panel refresh collapses (50 on a 60 Hz panel → 30 fps); the CPU pacer does not
   relocator extension (near conditional branches) shrinks the refused set; its
   in-game effect is not measured yet.
 - **Display mode: keep Fullscreen Desktop (or Windowed).** Switching to Exclusive fullscreen in the game's settings crashes it at the transition (`Passed invalid size for a target "Final Target"`); setup.sh resets the profile to Fullscreen Desktop if it finds Exclusive saved.
-- Online play: works for the patch author; we tested vs AI only. Your call.
+- Online play works: 2v2 over the network, an M1 Pro and an M5 Air both on this pack, vs two AI, 2–3 hours at a stretch (fresh prefixes, no CrossOver). Ranked or vs humans: not tested.
 - Frame pacing is done by the layer (CPU-side, `d3d12.cpuPacing`). setup.sh picks the rate from the panel: 120 Hz ProMotion (MacBook Pro) → 120 fps with in-game Image Quality **Low**; 60 Hz (MacBook Air) → 60 fps with **High**. Keep in-game V-Sync Off and Framerate Limit Unlimited (setup.sh sets both). All knobs in `~/aoe4-pack/aoe4.conf` (pace / patches / hud / metalfx / pending_presents) or as flags (`aoe4.sh --pace 60`); `AOE4_PACE=<fps> bash setup.sh` overrides the default.
 - **16 GB Macs: close the browser.** The game wants 4–5 GB resident; with a browser and a few apps open a 16 GB M1 Pro fell to 59 MB free, macOS compressed the game's pages and every burst of compression showed up as a 200–1000 ms stall (11 in 30 min, all in one 8-minute episode). With memory free the same match runs p95 18 ms with zero stalls.
 - **Firewalls.** Little Snitch / LuLu will ask about `Engine/bin/wine` (a new binary in a new place) the first time Steam connects; allow it, or Steam sits offline and the game never launches. If you already denied it, fix the rule and relaunch (`aoe4.sh` after `WINEPREFIX=~/aoe4-pack/prefix ~/aoe4-pack/Engine/bin/wineserver -k`).
