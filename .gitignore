@@ -1,0 +1,7 @@
+# binaries ship in the release tarball, not in git
+Engine/
+dxmt/
+Helpers/x87sidecar
+deps/*.dylib
+SHA256SUMS
+.DS_Store

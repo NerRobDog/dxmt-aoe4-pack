@@ -1,0 +1,58 @@
+diff --git a/dlls/ntdll/unix/file.c b/dlls/ntdll/unix/file.c
+index aff2ee6..8065cdb 100644
+--- a/dlls/ntdll/unix/file.c
++++ b/dlls/ntdll/unix/file.c
+@@ -2868,6 +2868,9 @@ NTSTATUS WINAPI NtQueryDirectoryFile( HANDLE handle, HANDLE event, PIO_APC_ROUTI
+           length, info_class, single_entry, debugstr_us(mask),
+           restart_scan);
+ 
++    single_entry = syscall_bool( single_entry );
++    restart_scan = syscall_bool( restart_scan );
++
+     if (event || apc_routine)
+     {
+         FIXME( "Unsupported yet option\n" );
+diff --git a/dlls/ntdll/unix/sync.c b/dlls/ntdll/unix/sync.c
+index b05b91b..5e0a93a 100644
+--- a/dlls/ntdll/unix/sync.c
++++ b/dlls/ntdll/unix/sync.c
+@@ -2081,7 +2081,7 @@ NTSTATUS WINAPI NtQueryDirectoryObject( HANDLE handle, DIRECTORY_BASIC_INFORMATI
+                                         ULONG *context, ULONG *ret_size )
+ {
+     unsigned int status, i, count, total_len, pos, used_size, used_count, strpool_head;
+-    ULONG index = restart ? 0 : *context;
++    ULONG index = syscall_bool( restart ) ? 0 : *context;
+     struct directory_entry *entries;
+ 
+     if (!(entries = malloc( size ))) return STATUS_NO_MEMORY;
+@@ -2090,7 +2090,7 @@ NTSTATUS WINAPI NtQueryDirectoryObject( HANDLE handle, DIRECTORY_BASIC_INFORMATI
+     {
+         req->handle = wine_server_obj_handle( handle );
+         req->index = index;
+-        req->max_count = single_entry ? 1 : UINT_MAX;
++        req->max_count = syscall_bool( single_entry ) ? 1 : UINT_MAX;
+         wine_server_set_reply( req, entries, size );
+         status = wine_server_call( req );
+         count = reply->count;
+diff --git a/dlls/ntdll/unix/unix_private.h b/dlls/ntdll/unix/unix_private.h
+index 0c68ca4..ee00fbf 100644
+--- a/dlls/ntdll/unix/unix_private.h
++++ b/dlls/ntdll/unix/unix_private.h
+@@ -733,4 +733,17 @@ static inline int is_gdt_sel( WORD sel )
+ 
+ #endif  /* defined(__i386__) || defined(__x86_64__) */
+ 
++/* NerRobDog 2026-09-09: BOOLEAN syscall arguments reach the Unix side straight from the
++ * PE caller's registers/stack slots. PE code built with clang for the MS ABI only writes
++ * the low byte of a BOOLEAN, while the Unix side built with Apple clang assumes the caller
++ * zero-extended small integers and tests the whole 32-bit register. Whatever was left above
++ * bit 7 (a stack address, typically) then reads as TRUE: NtQueryDirectoryObject restarted
++ * its scan on every call and kernelbase's GetLogicalDrives spun forever inside Steam's
++ * hardware survey. Force a real byte zero-extension before using such an argument. */
++static inline unsigned int syscall_bool( unsigned int v )
++{
++    __asm__ __volatile__( "movzbl %b0, %0" : "+r"(v) );
++    return v;
++}
++
+ #endif /* __NTDLL_UNIX_PRIVATE_H */

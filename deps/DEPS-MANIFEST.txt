@@ -1,0 +1,14 @@
+# x86_64 runtime libraries bundled with the pack (built by Homebrew from upstream sources)
+# file | formula | version | license | homepage
+libfreetype.6.dylib | freetype | 2.14.3 | FTL | https://www.freetype.org/
+libintl.8.dylib | gettext | 1.0 | GPL-3.0-or-later AND LGPL-2.1-or-later | https://www.gnu.org/software/gettext/
+libgmp.10.dylib | gmp | 6.3.0 | LGPL-3.0-or-later OR GPL-2.0-or-later | https://gmplib.org/
+libgnutls.30.dylib | gnutls | 3.8.12 | LGPL-2.1-or-later AND GPL-3.0-only | https://gnutls.org/
+libidn2.0.dylib | libidn2 | 2.3.8 | (GPL-2.0-or-later OR LGPL-3.0-or-later) AND (Unicode-TOU AND Unicode-DFS-2016) AND GPL-3.0-or-later AND LGPL-2.1-or-later AND FSFAP-no-warranty-disclaimer | https://www.gnu.org/software/libidn/#libidn2
+libpng16.16.dylib | libpng | 1.6.58 | libpng-2.0 | https://www.libpng.org/pub/png/libpng.html
+libtasn1.6.dylib | libtasn1 | 4.21.0 | LGPL-2.1-or-later | https://www.gnu.org/software/libtasn1/
+libunistring.5.dylib | libunistring | 1.4.2 | GPL-2.0-or-later OR LGPL-3.0-or-later | https://www.gnu.org/software/libunistring/
+libhogweed.6.11.dylib | nettle | 3.10.2 | GPL-2.0-or-later OR LGPL-3.0-or-later | https://www.lysator.liu.se/~nisse/nettle/
+libnettle.8.11.dylib | nettle | 3.10.2 | GPL-2.0-or-later OR LGPL-3.0-or-later | https://www.lysator.liu.se/~nisse/nettle/
+libp11-kit.0.dylib | p11-kit | 0.26.2 | BSD-3-Clause | https://p11-glue.github.io/p11-glue/p11-kit.html
+libinotify.0.dylib | libinotify-kqueue (built from source, commit cc614f6) | 20260625 | MIT | https://github.com/libinotify-kqueue/libinotify-kqueue

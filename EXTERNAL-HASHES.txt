@@ -1,0 +1,2 @@
+# Not included in this pack — the version it was tested with (verify with: shasum -a 256 <file>)
+5380c577805565817f528af6eac385263413fa6815553f9a31fa62561cb45e8c  RelicCardinal.exe  (the AoE IV build the Wine patch targets; setup.sh refuses others)
