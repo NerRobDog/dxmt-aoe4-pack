@@ -4,7 +4,7 @@ id     = "aoe4"
 status = "rc"
 home   = "~/aoe4-pack"
 
-setup        = "bash games/aoe4/setup.sh"
+setup        = "bash games/aoe4/bootstrap.sh"
 launch       = "~/aoe4-pack/aoe4.sh"
 launch_plain = "~/aoe4-pack/aoe4.sh --plain"
 profile      = "~/aoe4-pack/README-local.txt"

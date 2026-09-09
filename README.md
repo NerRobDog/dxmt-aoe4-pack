@@ -36,7 +36,7 @@ nothing at all: without CrossOver, setup.sh creates the prefix and installs the 
 Steam client into it, and Steam downloads the game. CrossOver is never needed at runtime.
 The engine, the helper and the x86_64 libraries the engine needs (freetype, gnutls,
 inotify, …, in `deps/`) are in the pack; the only download is Valve's own Steam
-installer in the no-CrossOver case. See `INSTALL.md`.
+installer in the no-CrossOver case. See `INSTALL.md`. Releases: https://github.com/NerRobDog/dxmt-aoe4-pack/releases — or `bash bootstrap.sh` from a clone of this repo.
 
 ## Numbers (1v1 skirmish vs AI; the multi-hour runs: online 2v2 between two Macs on this pack vs AI — DXMT HUD + frame log)
 
