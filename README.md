@@ -29,7 +29,7 @@ Three pieces, all with source, all inside the pack (~450 MB unpacked):
    — our build from the MIT source published with GameToMac (it carries the
    softfault decoder hook). Attaches cooperatively to the game process and hooks
    Rosetta's decoder in that process only. No SIP changes, no root, nothing
-   system-wide. Source: `<SIDECAR-SOURCE-REPO-LINK>`.
+   system-wide. Source: `https://github.com/NerRobDog/x87sidecar`.
 
 You bring: a Mac with Apple Silicon on macOS 26+ and the game — either a CrossOver
 bottle where AoE IV (Steam) is installed (used only as the source of the game files), or
@@ -89,5 +89,5 @@ and want the old values.
 `THIRD_PARTY.md`. DXMT fork: https://github.com/NerRobDog/dxmt (branch `aoe4-d3d12`,
 build `v0.80-227-gab639cd`). Wine engine source: `https://github.com/NerRobDog/wine-aoe4` (Marc Ibrahim's
 patched CrossOver 26.3 / Wine 11.0 tree + the three diffs in `THIRD_PARTY/`).
-x87sidecar source: `<SIDECAR-SOURCE-REPO-LINK>`. No game files, shader caches or Apple
+x87sidecar source: `https://github.com/NerRobDog/x87sidecar`. No game files, shader caches or Apple
 D3DMetal are distributed.
