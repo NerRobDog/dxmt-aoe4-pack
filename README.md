@@ -83,6 +83,10 @@ Unlimited, Exclusive → Fullscreen Desktop) and leaves a backup next to it
 (`configuration_system.lua.aoe4-pack.bak`); restore it if you go back to plain CrossOver
 and want the old values.
 
+## Support
+
+Free and open; if it saved you a licence, see [](DONATE.md) (crypto — card processors are not available where I live) or https://github.com/NerRobDog/satoru/blob/main/DONATE.md.
+
 ## Source, credits, licenses
 
 `THIRD_PARTY.md`. DXMT fork: https://github.com/NerRobDog/dxmt (branch `aoe4-d3d12`,
