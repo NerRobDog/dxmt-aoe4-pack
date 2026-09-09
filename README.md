@@ -85,7 +85,7 @@ and want the old values.
 
 ## Support
 
-Free and open; if it saved you a licence, see [](DONATE.md) (crypto — card processors are not available where I live) or https://github.com/NerRobDog/satoru/blob/main/DONATE.md.
+Free and open; if it saved you a licence, see [`DONATE.md`](DONATE.md) — crypto only, card processors are not available where I live.
 
 ## Source, credits, licenses
 
