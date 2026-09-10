@@ -16,59 +16,88 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-DEST="${AOE4_PACK_HOME:-$HOME/aoe4-pack}"
+DEST="${SATORU_GAME_HOME:-${AOE4_PACK_HOME:-$HOME/aoe4-pack}}"
 BOTTLE="${AOE4_BOTTLE:-}"
 MODE="${AOE4_MODE:-auto}"     # auto | clone | fresh
-for a in "$@"; do case "$a" in --fresh) MODE=fresh ;; --clone) MODE=clone ;; -h|--help) echo "usage: setup.sh [--fresh|--clone]   env: AOE4_PACK_HOME AOE4_BOTTLE AOE4_STEAMAPPS AOE4_STEAM_SETUP AOE4_PACE"; exit 0 ;; *) echo "unknown flag $a" >&2; exit 2 ;; esac; done
+for a in "$@"; do case "$a" in --preflight) ;; --fresh) MODE=fresh ;; --clone) MODE=clone ;; -h|--help) echo "usage: setup.sh [--preflight] [--fresh|--clone]   env: AOE4_PACK_HOME AOE4_BOTTLE AOE4_STEAMAPPS AOE4_STEAM_SETUP AOE4_PACE"; exit 0 ;; *) echo "unknown flag $a" >&2; exit 2 ;; esac; done
 STEAM_SETUP_URL="https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe"
 EXE_SHA_EXPECTED="5380c577805565817f528af6eac385263413fa6815553f9a31fa62561cb45e8c"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
-die()  { echo "ERROR: $*" >&2; exit 1; }
+# The umbrella reads the exit code to tell a machine that cannot run the game
+# (10) from a pack that arrived broken (12) from an unexpected failure (1).
+# Everything used to be exit 1, which told it nothing.
+die()  { echo "ERROR: $2" >&2; exit "$1"; }
 
-# ---- host checks ----
-[ "$(uname -m)" = "arm64" ] || die "Apple Silicon required."
-OSV=$(sw_vers -productVersion); case "$OSV" in 26.*|27.*) ;; *) die "macOS 26 or newer required (you have $OSV). Rosetta AVX + the helper's hooks are validated on 26.x only.";; esac
-[ -f "$HERE/deps/libgnutls.30.dylib" ] && [ -f "$HERE/deps/libinotify.dylib" ] || die "pack is incomplete: deps/ is missing. Re-download the archive."
-[ -x "$HERE/Engine/bin/wine" ] && [ -f "$HERE/Engine/lib/wine/x86_64-unix/ntdll.so" ] || die "pack is incomplete: Engine/ is missing. Re-download the archive."
-[ -f "$HERE/Helpers/x87sidecar" ] || die "pack is incomplete: Helpers/x87sidecar is missing. Re-download the archive."
-/usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null || die "Rosetta is not installed. Run: softwareupdate --install-rosetta"
+preflight() {
+  # ---- host checks ----
+  # uname -m answers about this process, and a process can be translated: run
+  # from a Rosetta shell or an x86_64 interpreter it says x86_64 on an M1.
+  # hw.optional.arm64 is a property of the hardware.
+  [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ] || die 10 "Apple Silicon required."
+  OSV=$(sw_vers -productVersion); case "$OSV" in 26.*|27.*) ;; *) die 10 "macOS 26 or newer required (you have $OSV). Rosetta AVX + the helper's hooks are validated on 26.x only.";; esac
+  [ -f "$HERE/deps/libgnutls.30.dylib" ] && [ -f "$HERE/deps/libinotify.dylib" ] || die 12 "pack is incomplete: deps/ is missing. Re-download the archive."
+  [ -x "$HERE/Engine/bin/wine" ] && [ -f "$HERE/Engine/lib/wine/x86_64-unix/ntdll.so" ] || die 12 "pack is incomplete: Engine/ is missing. Re-download the archive."
+  [ -f "$HERE/Helpers/x87sidecar" ] || die 12 "pack is incomplete: Helpers/x87sidecar is missing. Re-download the archive."
+  /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null || die 10 "Rosetta is not installed. Run: softwareupdate --install-rosetta"
 
-# ---- locate an existing install of the game (CrossOver bottle) and pick the mode ----
-if [ -z "$BOTTLE" ]; then
-  shopt -s nullglob
-  for b in "$HOME/Library/Application Support/CrossOver/Bottles"/*; do
-    [ -f "$b/drive_c/Program Files (x86)/Steam/steamapps/common/Age of Empires IV/RelicCardinal.exe" ] && { BOTTLE="$b"; break; }
-  done
-  shopt -u nullglob
-fi
-if [ "$MODE" = auto ]; then
-  if [ -n "$BOTTLE" ]; then MODE=clone; else MODE=fresh; fi
-fi
-STEAMAPPS="${AOE4_STEAMAPPS:-}"
-if [ "$MODE" = clone ]; then
-  [ -n "$BOTTLE" ] && [ -d "$BOTTLE/drive_c" ] || die "No CrossOver bottle with Age of Empires IV (Steam) found. Set AOE4_BOTTLE=/path/to/bottle, or run setup.sh --fresh to install Steam without CrossOver."
-  echo "Mode: clone of CrossOver bottle $BOTTLE"
-  STEAMAPPS="$BOTTLE/drive_c/Program Files (x86)/Steam/steamapps"
-else
-  echo "Mode: fresh (no CrossOver; the pack's engine + the official Steam installer)"
-  if [ -z "$STEAMAPPS" ] && [ -n "$BOTTLE" ]; then STEAMAPPS="$BOTTLE/drive_c/Program Files (x86)/Steam/steamapps"; fi
-  if [ -n "$STEAMAPPS" ]; then
-    [ -d "$STEAMAPPS/common" ] || die "AOE4_STEAMAPPS=$STEAMAPPS has no common/ folder"
-    echo "Game files: reusing the Steam library at $STEAMAPPS (linked, not copied)"
-  else
-    echo "Game files: none found on this Mac - Steam will download the game (~45 GB) on first launch"
+  # ---- locate an existing install of the game (CrossOver bottle) and pick the mode ----
+  if [ -z "$BOTTLE" ]; then
+    shopt -s nullglob
+    for b in "$HOME/Library/Application Support/CrossOver/Bottles"/*; do
+      [ -f "$b/drive_c/Program Files (x86)/Steam/steamapps/common/Age of Empires IV/RelicCardinal.exe" ] && { BOTTLE="$b"; break; }
+    done
+    shopt -u nullglob
   fi
-fi
-EXE=""; EXE_SHA="(game not installed yet)"
-[ -n "$STEAMAPPS" ] && [ -f "$STEAMAPPS/common/Age of Empires IV/RelicCardinal.exe" ] && EXE="$STEAMAPPS/common/Age of Empires IV/RelicCardinal.exe"
-if [ -n "$EXE" ]; then
-  bold "Verifying game build (the Wine patch is hard-wired to one exe build)..."
-  EXE_SHA=$(shasum -a 256 "$EXE" | awk '{print $1}')
-  [ "$EXE_SHA" = "$EXE_SHA_EXPECTED" ] || die "RelicCardinal.exe sha256 is $EXE_SHA, expected $EXE_SHA_EXPECTED. The game was updated; the softfault/code-cache patch will NOT engage for this build (it disables itself). Wait for an updated pack."
-fi
+  if [ "$MODE" = auto ]; then
+    if [ -n "$BOTTLE" ]; then MODE=clone; else MODE=fresh; fi
+  fi
+  STEAMAPPS="${AOE4_STEAMAPPS:-}"
+  if [ "$MODE" = clone ]; then
+    [ -n "$BOTTLE" ] && [ -d "$BOTTLE/drive_c" ] || die 10 "No CrossOver bottle with Age of Empires IV (Steam) found. Set AOE4_BOTTLE=/path/to/bottle, or run setup.sh --fresh to install Steam without CrossOver."
+    echo "Mode: clone of CrossOver bottle $BOTTLE"
+    STEAMAPPS="$BOTTLE/drive_c/Program Files (x86)/Steam/steamapps"
+  else
+    echo "Mode: fresh (no CrossOver; the pack's engine + the official Steam installer)"
+    if [ -z "$STEAMAPPS" ] && [ -n "$BOTTLE" ]; then STEAMAPPS="$BOTTLE/drive_c/Program Files (x86)/Steam/steamapps"; fi
+    if [ -n "$STEAMAPPS" ]; then
+      [ -d "$STEAMAPPS/common" ] || die 10 "AOE4_STEAMAPPS=$STEAMAPPS has no common/ folder"
+      echo "Game files: reusing the Steam library at $STEAMAPPS (linked, not copied)"
+    else
+      echo "Game files: none found on this Mac - Steam will download the game (~45 GB) on first launch"
+    fi
+  fi
+  EXE=""; EXE_SHA="(game not installed yet)"
+  [ -n "$STEAMAPPS" ] && [ -f "$STEAMAPPS/common/Age of Empires IV/RelicCardinal.exe" ] && EXE="$STEAMAPPS/common/Age of Empires IV/RelicCardinal.exe"
+  if [ -n "$EXE" ]; then
+    bold "Verifying game build (the Wine patch is hard-wired to one exe build)..."
+    EXE_SHA=$(shasum -a 256 "$EXE" | awk '{print $1}')
+    [ "$EXE_SHA" = "$EXE_SHA_EXPECTED" ] || die 10 "RelicCardinal.exe sha256 is $EXE_SHA, expected $EXE_SHA_EXPECTED. The game was updated; the softfault/code-cache patch will NOT engage for this build (it disables itself). Wait for an updated pack."
+  fi
 
-if pgrep -q wineserver; then die "wineserver is running. Quit CrossOver / the bottle's Steam first."; fi
+  if pgrep -q wineserver; then die 10 "wineserver is running. Quit CrossOver / the bottle's Steam first."; fi
+
+
+  # The helper is probed here, against the unpacked pack, rather than after the
+  # engine has been copied: a refusal has to cost nothing. satoru clears the
+  # quarantine flag before calling us, but a person running setup.sh by hand has
+  # no-one to do it for them, and an ad-hoc-signed binary that still carries the
+  # flag is killed by Gatekeeper rather than answering.
+  xattr -d com.apple.quarantine "$HERE/Helpers/x87sidecar" 2>/dev/null || true
+  bold "Checking the Rosetta helper against your Rosetta runtime..."
+  "$HERE/Helpers/x87sidecar" --probe 2>&1 | tail -3
+  "$HERE/Helpers/x87sidecar" --probe 2>&1 | tail -1 | grep -q '^supported' \
+    || die 10 "x87sidecar --probe did not report 'supported' - your Rosetta runtime differs from the tested one. Not proceeding."
+
+  # Facts the umbrella shows before anything is written.
+  echo "satoru: mode=$MODE"
+  [ -n "$BOTTLE" ] && echo "satoru: bottle=$BOTTLE"
+  echo "satoru: game_files=$([ -n "$STEAMAPPS" ] && echo linked || echo download)"
+  echo "satoru: home=$DEST"
+}
+
+preflight
+case "${1:-}" in --preflight) exit 0 ;; esac
 
 # ---- build $DEST ----
 bold "Setting up $DEST"
@@ -128,10 +157,6 @@ cp "$HERE/dxmt.conf" "$DEST/dxmt.conf.reference"
 cp "$HERE/counters.py" "$DEST/counters.py"; cp "$HERE/patch-profile.py" "$DEST/patch-profile.py"
 sed "s|__DEST__|$DEST|g" "$HERE/aoe4.sh" > "$DEST/aoe4.sh"; chmod +x "$DEST/aoe4.sh"; cp "$DEST/aoe4.sh" "$DEST/aoe4.command"
 
-bold "Checking the Rosetta helper against your Rosetta runtime..."
-"$DEST/Helpers/x87sidecar" --probe 2>&1 | tail -3
-"$DEST/Helpers/x87sidecar" --probe 2>&1 | tail -1 | grep -q '^supported' || die "x87sidecar --probe did not report 'supported' — your Rosetta runtime differs from the tested one. Not proceeding."
-
 PREFIX="$DEST/prefix"
 # Same environment aoe4.sh uses at runtime (engine, bundled x86_64 libs, no Mono/Gecko prompts).
 export WINEPREFIX="$PREFIX" WINEARCH=win64 WINELOADER="$DEST/Engine/bin/wine" WINESERVER="$DEST/Engine/bin/wineserver"
@@ -165,30 +190,30 @@ else
   else
     bold "Creating a new Wine prefix with the pack's engine ($PREFIX)..."
     mkdir -p "$PREFIX"
-    "$DEST/Engine/bin/wine" wineboot -u >/dev/null 2>&1 || die "wineboot failed (run with WINEDEBUG=err+all for details)"
+    "$DEST/Engine/bin/wine" wineboot -u >/dev/null 2>&1 || die 1 "wineboot failed (run with WINEDEBUG=err+all for details)"
     "$DEST/Engine/bin/wineserver" -w
-    [ -f "$PREFIX/system.reg" ] || die "wineboot did not produce a prefix"
+    [ -f "$PREFIX/system.reg" ] || die 1 "wineboot did not produce a prefix"
     # Official Steam installer, straight from Valve. AOE4_STEAM_SETUP=/path/SteamSetup.exe skips the download.
     mkdir -p "$DEST/downloads"
     SETUP="${AOE4_STEAM_SETUP:-$DEST/downloads/SteamSetup.exe}"
     if [ ! -f "$SETUP" ]; then
       bold "Downloading the Steam installer from $STEAM_SETUP_URL ..."
-      curl -fL --progress-bar -o "$SETUP.part" "$STEAM_SETUP_URL" || die "download failed - check the connection or put SteamSetup.exe at $SETUP"
+      curl -fL --progress-bar -o "$SETUP.part" "$STEAM_SETUP_URL" || die 1 "download failed - check the connection or put SteamSetup.exe at $SETUP"
       mv "$SETUP.part" "$SETUP"
     fi
-    head -c 2 "$SETUP" | grep -q 'MZ' || die "$SETUP is not a Windows executable"
+    head -c 2 "$SETUP" | grep -q 'MZ' || die 12 "$SETUP is not a Windows executable"
     xattr -d com.apple.quarantine "$SETUP" 2>/dev/null || true
     bold "Installing Steam silently (SteamSetup.exe /S) ..."
     "$DEST/Engine/bin/wine" "$SETUP" /S >/dev/null 2>&1 || true
     "$DEST/Engine/bin/wineserver" -w
-    [ -f "$STEAMDIR/steam.exe" ] || die "Steam did not install (no $STEAMDIR/steam.exe). Run: WINEDEBUG=err+all $DEST/Engine/bin/wine $SETUP"
+    [ -f "$STEAMDIR/steam.exe" ] || die 1 "Steam did not install (no $STEAMDIR/steam.exe). Run: WINEDEBUG=err+all $DEST/Engine/bin/wine $SETUP"
     echo "  Steam installed in $STEAMDIR (it updates itself on first launch, then asks you to sign in)"
   fi
   if [ -n "$STEAMAPPS" ]; then
     bold "Linking the existing game files into the new prefix..."
     mkdir -p "$STEAMDIR/steamapps"
     if [ -e "$STEAMDIR/steamapps/common" ] && [ ! -L "$STEAMDIR/steamapps/common" ]; then
-      die "$STEAMDIR/steamapps/common already exists as a real folder; move it away or unset AOE4_STEAMAPPS"
+      die 10 "$STEAMDIR/steamapps/common already exists as a real folder; move it away or unset AOE4_STEAMAPPS"
     fi
     ln -sfn "$STEAMAPPS/common" "$STEAMDIR/steamapps/common"
     n=0; for m in "$STEAMAPPS"/appmanifest_*.acf; do [ -f "$m" ] || continue; cp "$m" "$STEAMDIR/steamapps/"; n=$((n+1)); done
