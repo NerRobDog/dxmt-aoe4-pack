@@ -19,7 +19,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 DEST="${SATORU_GAME_HOME:-${AOE4_PACK_HOME:-$HOME/aoe4-pack}}"
 BOTTLE="${AOE4_BOTTLE:-}"
 MODE="${AOE4_MODE:-auto}"     # auto | clone | fresh
-for a in "$@"; do case "$a" in --preflight) ;; --fresh) MODE=fresh ;; --clone) MODE=clone ;; -h|--help) echo "usage: setup.sh [--preflight] [--fresh|--clone]   env: AOE4_PACK_HOME AOE4_BOTTLE AOE4_STEAMAPPS AOE4_STEAM_SETUP AOE4_PACE"; exit 0 ;; *) echo "unknown flag $a" >&2; exit 2 ;; esac; done
+PREFLIGHT_ONLY=0
+for a in "$@"; do case "$a" in --preflight) PREFLIGHT_ONLY=1 ;; --fresh) MODE=fresh ;; --clone) MODE=clone ;; -h|--help) echo "usage: setup.sh [--preflight] [--fresh|--clone]   env: AOE4_PACK_HOME AOE4_BOTTLE AOE4_STEAMAPPS AOE4_STEAM_SETUP AOE4_PACE"; exit 0 ;; *) echo "unknown flag $a" >&2; exit 2 ;; esac; done
 STEAM_SETUP_URL="https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe"
 EXE_SHA_EXPECTED="5380c577805565817f528af6eac385263413fa6815553f9a31fa62561cb45e8c"
 
@@ -85,7 +86,9 @@ preflight() {
   # flag is killed by Gatekeeper rather than answering.
   xattr -d com.apple.quarantine "$HERE/Helpers/x87sidecar" 2>/dev/null || true
   bold "Checking the Rosetta helper against your Rosetta runtime..."
-  "$HERE/Helpers/x87sidecar" --probe 2>&1 | tail -3
+  # || true: under `set -euo pipefail` a sidecar that crashes here would abort the
+  # script with its own exit code, before the next line can turn that into a 10.
+  "$HERE/Helpers/x87sidecar" --probe 2>&1 | tail -3 || true
   "$HERE/Helpers/x87sidecar" --probe 2>&1 | tail -1 | grep -q '^supported' \
     || die 10 "x87sidecar --probe did not report 'supported' - your Rosetta runtime differs from the tested one. Not proceeding."
 
@@ -97,7 +100,9 @@ preflight() {
 }
 
 preflight
-case "${1:-}" in --preflight) exit 0 ;; esac
+# Set by the flag loop, which accepts --preflight anywhere. Reading $1 here meant
+# `setup.sh --clone --preflight` answered the question by doing the whole thing.
+if [ "$PREFLIGHT_ONLY" = 1 ]; then exit 0; fi
 
 # ---- build $DEST ----
 bold "Setting up $DEST"
