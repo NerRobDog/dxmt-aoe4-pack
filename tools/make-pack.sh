@@ -51,11 +51,31 @@ echo "Staging tracked files..."
 ( cd "$HERE" && git ls-files -z ) | ( cd "$HERE" && xargs -0 -I{} \
   bash -c 'mkdir -p "$0/$(dirname "{}")" && cp -p "{}" "$0/{}"' "$STAGE" )
 
+# What builds a release is not part of it. bootstrap.sh downloads the tarball, so
+# inside the tarball it has nothing to fetch and only rots; tools/ builds the
+# tarball, which nobody does from inside one. Both belong to a clone of the
+# repository, and keeping them out is also what lets the version check below be
+# strict: the line in make-pack.sh that prints a [source] block for pasting is a
+# generator of the one copy, not a second copy, and it never reaches the pack.
+rm -f "${STAGE:?}/bootstrap.sh"
+rm -rf "${STAGE:?}/tools"
+
 echo "Staging the binary payload..."
 for part in Engine Helpers dxmt deps; do
   rm -rf "${STAGE:?}/$part"
   cp -R "$ARTIFACTS/$part" "$STAGE/$part"
 done
+
+# Wine's build-time import libraries: 503 files, 19 MB, and nothing at runtime
+# opens one — the game links against the .dll and .so beside them. They are only
+# needed by a build, and the pack does not build anything; it copies. If a
+# winegcc path ever appears here, this line is what has to go.
+find "${STAGE:?}/Engine" -name '*.a' -delete 2>/dev/null || true
+
+# One version, in one file. Checked before anything is hashed, so a pack that
+# names a release in two places never reaches a tarball.
+bash "$HERE/tools/check-version.sh" "$VERSION" "$STAGE" || die \
+  "Build refused by tools/check-version.sh (above)."
 
 # The gate. preflight is the one command the contract promises writes nothing, so
 # it is the one a build script may run. Exit 2 and 127 mean the pack did not
@@ -107,4 +127,3 @@ echo "url     = \"https://github.com/NerRobDog/$NAME/releases/download/$VERSION/
 echo "sha256  = \"$SHA\""
 echo "size    = $SIZE"
 echo "version = \"$VERSION\""
-echo "check   = \"github-release\""

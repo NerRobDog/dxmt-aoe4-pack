@@ -1,4 +1,4 @@
-# dxmt-aoe4-pack v0.1 — Age of Empires IV on Apple Silicon, open-source graphics
+# dxmt-aoe4-pack — Age of Empires IV on Apple Silicon, open-source graphics
 
 Age of Empires IV (D3D12-only, Arxan-protected) at a **flat 60 fps on a MacBook Air M5**
 (95–130 uncapped) and a **flat 60 on an M1 Pro 16 GB** (p99 18.7 ms), with memory

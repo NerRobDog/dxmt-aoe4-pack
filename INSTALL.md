@@ -20,7 +20,7 @@
 
 ## Steps
 
-1. Download `dxmt-aoe4-pack-v0.1.tar.gz` from the Releases page and unzip it (double-click) → folder `dxmt-aoe4-pack`. (Or clone this repo and run `bash bootstrap.sh`: it downloads and verifies the archive and runs setup for you.)
+1. Download the latest `dxmt-aoe4-pack` tarball from the Releases page and unzip it (double-click) → folder `dxmt-aoe4-pack`. (Or clone this repo and run `bash bootstrap.sh`: it downloads and verifies the archive and runs setup for you.)
 2. Quit CrossOver completely (the bottle's Steam too). On a 16 GB Mac also close the browser before playing — the game needs 4–5 GB resident, and memory pressure shows up as multi-hundred-ms stalls.
 3. Terminal:
 
