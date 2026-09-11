@@ -72,6 +72,26 @@ done
 # winegcc path ever appears here, this line is what has to go.
 find "${STAGE:?}/Engine" -name '*.a' -delete 2>/dev/null || true
 
+# The engine's revision, carried into the pack so the attribution can be checked
+# against it and so anyone holding the tarball can ask what built it. The binary
+# will not say: its only version string is `wine-11.0`, in the 27 KB bin/wine
+# loader and in ntdll.so alike.
+#
+# It comes from the engine build if that left one behind, or from the environment
+# when a human knows what they built. Neither is a hard requirement: the v0.1
+# engine predates the idea, and refusing to package it would help nobody.
+ENGINE_ID=""
+[ -s "$ARTIFACTS/Engine/.build-id" ] && ENGINE_ID="$(tr -d '[:space:]' < "$ARTIFACTS/Engine/.build-id")"
+[ -z "$ENGINE_ID" ] && ENGINE_ID="${AOE4_ENGINE_COMMIT:-}"
+if [ -n "$ENGINE_ID" ]; then
+  printf '%s\n' "$ENGINE_ID" > "${STAGE:?}/Engine/.build-id"
+  echo "Engine built from $ENGINE_ID"
+else
+  echo "WARNING: no engine revision recorded. The pack will ship without one, so
+         THIRD_PARTY.md cannot be checked against what was actually built. Pass
+         AOE4_ENGINE_COMMIT=<sha> to record it." >&2
+fi
+
 # One version, in one file. Checked before anything is hashed, so a pack that
 # names a release in two places never reaches a tarball.
 bash "$HERE/tools/check-version.sh" "$VERSION" "$STAGE" || die \

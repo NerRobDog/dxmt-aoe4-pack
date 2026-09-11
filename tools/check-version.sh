@@ -61,9 +61,38 @@ $hits"
 $urls"
 done < <(find "$DIR" -type f ! -name SHA256SUMS)
 
+# The engine's revision, where the build recorded one. LGPL asks that the source
+# offer point at what was actually shipped, and the binary itself cannot say: the
+# only version string in it is `wine-11.0`, in bin/wine (a 27 KB loader) and in
+# ntdll.so alike. The upper tree is pinned by the sha256 of its source tarball,
+# which is stronger than a commit; it is our delta on top that had nothing
+# holding it, and Engine/.build-id is what holds it now.
+#
+# A pack without one is not refused. The engine of v0.1 carries none, and a check
+# that blocked on that would make every older build unshippable; make-pack.sh
+# says so out loud instead.
+BUILD_ID_FILE="$DIR/Engine/.build-id"
+if [ -s "$BUILD_ID_FILE" ]; then
+  build_id="$(tr -d '[:space:]' < "$BUILD_ID_FILE")"
+  attribution="$DIR/THIRD_PARTY.md"
+  if [ ! -f "$attribution" ]; then
+    report "Engine/.build-id names $build_id, but there is no THIRD_PARTY.md to credit it in"
+  else
+    named=0
+    # Word-bounded, so the 64-character sha256 sums this file is full of cannot
+    # have a 40-character prefix mistaken for a commit.
+    while IFS= read -r token; do
+      case "$build_id" in "$token"*) named=1; break ;; esac
+    done < <(grep -oE '\b[0-9a-f]{7,40}\b' "$attribution" | sort -u)
+    [ "$named" = 1 ] || report "THIRD_PARTY.md does not name the engine revision that was built.
+Engine/.build-id says $build_id; credit that commit beside the build's repository."
+  fi
+fi
+
 if [ "$bad" = 1 ]; then
   echo "
-Build refused: the release version belongs in game.toml and nowhere else.
-Everything that needs it reads it from there." >&2
+Build refused. Each fact above belongs in exactly one place: the release version
+in game.toml, the engine revision in Engine/.build-id and the attribution that
+credits it. Everything else reads them." >&2
   exit 1
 fi
