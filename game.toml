@@ -20,7 +20,6 @@ url     = "https://github.com/NerRobDog/dxmt-aoe4-pack/releases/download/v0.1/dx
 sha256  = "0540919b44aaa83ab33ef7e16b6ed2da665f3b0a588bf5e1a82b1cdb5c715b4d"
 size    = 133000000
 version = "v0.1"
-check   = "github-release"
 
 [requires]
 arch    = "arm64"
@@ -30,6 +29,7 @@ disk_gb = 4
 
 [install]
 home_authoritative = true
+foreign_note = "writes outside the home: your CrossOver bottle (clone mode) and the game profile in Documents (.bak kept)"
 
 [paths]
 profile = "README-local.txt"
