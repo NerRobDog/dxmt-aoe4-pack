@@ -172,6 +172,14 @@ export DYLD_LIBRARY_PATH="$DEST/deps/Frameworks" DYLD_FALLBACK_LIBRARY_PATH="$DE
 STEAMDIR="$PREFIX/drive_c/Program Files (x86)/Steam"
 
 if [ "$MODE" = clone ]; then
+  # The contract has no update command: an update is this script run again, and
+  # MODE=auto finds the same bottle every time. A prefix that is already here has
+  # been played in, and rsyncing the bottle over it puts the bottle's months-old
+  # user.reg, Steam configuration and game profile back on top of the player's.
+  # The fresh branch below has always kept an existing prefix; this one did not.
+  if [ -f "$PREFIX/system.reg" ]; then
+    echo "Prefix $PREFIX already exists - keeping it (delete the folder to clone the bottle again)"
+  else
   bold "Cloning the bottle prefix (game files are symlinked, ~2-3 GB copied)..."
   mkdir -p "$PREFIX"
   rsync -a --exclude "drive_c/Program Files (x86)/Steam/steamapps/common" "$BOTTLE/" "$PREFIX/"
@@ -189,6 +197,7 @@ if [ "$MODE" = clone ]; then
       fi
     done
   done
+  fi
 else
   if [ -f "$STEAMDIR/steam.exe" ]; then
     echo "Prefix $PREFIX already has Steam - keeping it (delete the folder to start over)"
