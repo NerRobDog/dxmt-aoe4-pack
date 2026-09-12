@@ -16,10 +16,10 @@ two Macs works on this pack; against humans it is untested.
 
 [source]
 kind    = "release"
-url     = "https://github.com/NerRobDog/dxmt-aoe4-pack/releases/download/v0.1/dxmt-aoe4-pack-v0.1.tar.gz"
-sha256  = "0540919b44aaa83ab33ef7e16b6ed2da665f3b0a588bf5e1a82b1cdb5c715b4d"
-size    = 133000000
-version = "v0.1"
+url     = "https://github.com/NerRobDog/dxmt-aoe4-pack-dev/releases/download/v0.2/dxmt-aoe4-pack-v0.2.tar.gz"
+sha256  = "ed978e077fddea033f067799327200db9bb9402423a7fe7dd7897267f35c2691"
+size    = 136061249
+version = "v0.2"
 
 [requires]
 arch    = "arm64"
