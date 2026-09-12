@@ -113,6 +113,8 @@ if [ -n "$PREFLIGHT" ]; then
     2|127) die "the staged pack answered $code to \`$PREFLIGHT\` — it does not implement
 the manifest it ships with. Build refused: this is how a release ends up older
 than the manifest pointing at it." ;;
+    12) die "the staged pack answered 12 to \`$PREFLIGHT\` — pack incomplete
+(missing Engine/Helpers/deps). Build refused." ;;
     *) echo "  answered $code — understood, good enough to ship" ;;
   esac
 fi

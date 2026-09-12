@@ -37,7 +37,7 @@ preflight() {
   # hw.optional.arm64 is a property of the hardware.
   [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ] || die 10 "Apple Silicon required."
   OSV=$(sw_vers -productVersion); case "$OSV" in 26.*|27.*) ;; *) die 10 "macOS 26 or newer required (you have $OSV). Rosetta AVX + the helper's hooks are validated on 26.x only.";; esac
-  [ -f "$HERE/deps/libgnutls.30.dylib" ] && [ -f "$HERE/deps/libinotify.dylib" ] || die 12 "pack is incomplete: deps/ is missing. Re-download the archive."
+  [ -f "$HERE/deps/Frameworks/libgnutls.30.dylib" ] && [ -f "$HERE/deps/Frameworks/libinotify.dylib" ] || die 12 "pack is incomplete: deps/Frameworks is missing. Re-download the archive."
   [ -x "$HERE/Engine/bin/wine" ] && [ -f "$HERE/Engine/lib/wine/x86_64-unix/ntdll.so" ] || die 12 "pack is incomplete: Engine/ is missing. Re-download the archive."
   [ -f "$HERE/Helpers/x87sidecar" ] || die 12 "pack is incomplete: Helpers/x87sidecar is missing. Re-download the archive."
   /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null || die 10 "Rosetta is not installed. Run: softwareupdate --install-rosetta"
@@ -117,7 +117,16 @@ else
   echo "Wine engine already installed (same build), keeping it"
 fi
 cp "$HERE/Helpers/x87sidecar" "$DEST/Helpers/x87sidecar"; chmod +x "$DEST/Helpers/x87sidecar" "$DEST/Engine/bin/"*
-rm -rf "$DEST/deps/Frameworks"; mkdir -p "$DEST/deps"; cp -R "$HERE/deps" "$DEST/deps/Frameworks"
+rm -rf "$DEST/deps/Frameworks"; mkdir -p "$DEST/deps"
+# Pack ships deps/Frameworks/*.dylib. Copy that directory, not deps/ itself —
+# `cp -R deps Frameworks` would nest as Frameworks/Frameworks/.
+if [ -d "$HERE/deps/Frameworks" ]; then
+  cp -R "$HERE/deps/Frameworks" "$DEST/deps/Frameworks"
+else
+  # Older flat layout: dylibs directly under deps/
+  mkdir -p "$DEST/deps/Frameworks"
+  cp -R "$HERE/deps"/. "$DEST/deps/Frameworks/"
+fi
 rm -rf "$DEST/dxmt"; cp -R "$HERE/dxmt" "$DEST/dxmt"
 # A downloaded archive carries the quarantine flag; the engine is ad-hoc signed (no Apple
 # notarization), so strip the flag from the copies in the pack home or Gatekeeper kills wine.
