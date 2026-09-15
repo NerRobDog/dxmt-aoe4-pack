@@ -23,12 +23,67 @@ PREFLIGHT_ONLY=0
 for a in "$@"; do case "$a" in --preflight) PREFLIGHT_ONLY=1 ;; --fresh) MODE=fresh ;; --clone) MODE=clone ;; -h|--help) echo "usage: setup.sh [--preflight] [--fresh|--clone]   env: AOE4_PACK_HOME AOE4_BOTTLE AOE4_STEAMAPPS AOE4_STEAM_SETUP AOE4_PACE"; exit 0 ;; *) echo "unknown flag $a" >&2; exit 2 ;; esac; done
 STEAM_SETUP_URL="https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe"
 EXE_SHA_EXPECTED="5380c577805565817f528af6eac385263413fa6815553f9a31fa62561cb45e8c"
+# Preflight reads the home's prefix (is the game already in it, is the install
+# finished) as well as install building it, so both names come before either.
+PREFIX="$DEST/prefix"
+STEAMDIR="$PREFIX/drive_c/Program Files (x86)/Steam"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 # The umbrella reads the exit code to tell a machine that cannot run the game
 # (10) from a pack that arrived broken (12) from an unexpected failure (1).
 # Everything used to be exit 1, which told it nothing.
 die()  { echo "ERROR: $2" >&2; exit "$1"; }
+
+# Which pack built a home. The tarball's SHA256SUMS changes with any file in it;
+# a working tree has none, so there the scripts that land in the home stand in
+# for it. Missing scripts hash as nothing rather than aborting under set -e: this
+# runs as the very last step of an install.
+pack_id() {
+  if [ -f "$HERE/SHA256SUMS" ]; then
+    shasum -a 256 "$HERE/SHA256SUMS"
+  else
+    { cat "$HERE/setup.sh" "$HERE/aoe4.sh" "$HERE/patch-profile.py" "$HERE/counters.py" 2>/dev/null || true; } | shasum -a 256
+  fi | cut -d' ' -f1
+}
+
+# The game is already in the prefix: Steam downloaded it into its own library,
+# or an earlier run linked a library in and the link still leads somewhere. A
+# real common/ folder counts even before the exe is there - it is Steam's, a
+# download may be under way in it, and a link cannot replace it anyway.
+prefix_has_game() {
+  [ -f "$STEAMDIR/steamapps/common/Age of Empires IV/RelicCardinal.exe" ] && return 0
+  [ -d "$STEAMDIR/steamapps/common" ] && [ ! -L "$STEAMDIR/steamapps/common" ]
+}
+
+# What aoe4.sh needs to launch, and proof that the run which laid it down got to
+# the end. .pack-id is written last, so an install that died half-way - or one
+# from an older pack - is not mistaken for this pack's finished home. Game files
+# are not required: Steam downloads them on first launch. A link to a library
+# is: one that leads nowhere is a repair to run, and so is a link to a library
+# other than the one this run was told or found to use.
+home_is_complete() {
+  [ "$(cat "$DEST/.pack-id" 2>/dev/null)" = "$(pack_id)" ] || return 1
+  [ -x "$DEST/aoe4.sh" ] && [ -f "$DEST/aoe4.conf" ] && [ -f "$DEST/patch-profile.py" ] || return 1
+  [ -x "$DEST/Engine/bin/wine" ] && [ -f "$DEST/Engine/lib/wine/x86_64-unix/ntdll.so" ] || return 1
+  [ -x "$DEST/Helpers/x87sidecar" ] || return 1
+  [ -f "$DEST/deps/Frameworks/libgnutls.30.dylib" ] && [ -f "$DEST/deps/Frameworks/libinotify.dylib" ] || return 1
+  [ -f "$DEST/dxmt/x86_64-windows/d3d12.dll" ] || return 1
+  # Every library and DXMT dll the pack ships, by name: a home missing one of them
+  # is what "re-run setup.sh" in INSTALL.md is there to repair, and a rerun that
+  # answered 11 would never get to. The engine is covered by its .engine-id.
+  [ -f "$DEST/Engine/.engine-id" ] || return 1
+  local f
+  while IFS= read -r f; do
+    [ -e "$DEST/$f" ] || return 1
+  done < <(cd "$HERE" && find deps/Frameworks dxmt -type f ! -name '.DS_Store' 2>/dev/null)
+  [ -f "$PREFIX/system.reg" ] && [ -f "$STEAMDIR/steam.exe" ] || return 1
+  local common="$STEAMDIR/steamapps/common"
+  if [ -L "$common" ] && [ ! -d "$common" ]; then return 1; fi
+  if [ "$MODE" = fresh ] && [ -n "$STEAMAPPS" ] && [ "$(readlink "$common" 2>/dev/null)" != "$STEAMAPPS/common" ]; then
+    return 1
+  fi
+  return 0
+}
 
 preflight() {
   # ---- host checks ----
@@ -56,7 +111,14 @@ preflight() {
   else
     echo "Mode: fresh (the pack's engine + the official Steam installer)"
     if [ -z "$STEAMAPPS" ] && [ -n "$BOTTLE" ]; then STEAMAPPS="$BOTTLE/drive_c/Program Files (x86)/Steam/steamapps"; fi
-    if [ -z "$STEAMAPPS" ]; then
+    if [ -z "$STEAMAPPS" ] && prefix_has_game; then
+      # A rerun over a home that already has the game. Looking under ~/Games again
+      # would force that library on it: its app manifests over Steam's newer ones,
+      # a link refused over Steam's own common/, a different exe build there
+      # refusing an update that never needed it. Only an explicit AOE4_STEAMAPPS
+      # relinks an existing prefix.
+      echo "Game files: already in the prefix ($STEAMDIR/steamapps) - kept, ~/Games not searched"
+    elif [ -z "$STEAMAPPS" ]; then
       # Where a Steam library sits once it has been moved out of a CrossOver bottle:
       # ~/Games/<bottle name>/steamapps. Reading it is all that happens here.
       shopt -s nullglob
@@ -68,7 +130,7 @@ preflight() {
     if [ -n "$STEAMAPPS" ]; then
       [ -d "$STEAMAPPS/common" ] || die 10 "AOE4_STEAMAPPS=$STEAMAPPS has no common/ folder"
       echo "Game files: reusing the Steam library at $STEAMAPPS (linked, not copied)"
-    else
+    elif ! prefix_has_game; then
       echo "Game files: none found on this Mac - Steam will download the game (~45 GB) on first launch"
     fi
   fi
@@ -99,8 +161,17 @@ preflight() {
   # Facts the umbrella shows before anything is written.
   echo "satoru: mode=$MODE"
   [ -n "$BOTTLE" ] && echo "satoru: bottle=$BOTTLE"
-  echo "satoru: game_files=$([ -n "$STEAMAPPS" ] && echo linked || echo download)"
+  echo "satoru: game_files=$([ -n "$STEAMAPPS" ] && echo linked || { prefix_has_game && echo prefix || echo download; })"
   echo "satoru: home=$DEST"
+
+  # Already finished by this very pack is a success, and the contract has a
+  # number for it: satoru skips install only on 11, so answering 0 here made
+  # every Update fetch Steam's installer, relink and repatch all over again.
+  # Finished by another pack is an update waiting to happen, not a success.
+  if home_is_complete; then
+    echo "Already installed by this pack and complete; nothing to do (delete $DEST/.pack-id to run setup again anyway)."
+    exit 11
+  fi
 }
 
 preflight
@@ -110,6 +181,9 @@ if [ "$PREFLIGHT_ONLY" = 1 ]; then exit 0; fi
 
 # ---- build $DEST ----
 bold "Setting up $DEST"
+# A run that fails past this point must not leave a home the previous run called
+# finished: home_is_complete trusts .pack-id, so it goes before anything changes.
+rm -f "$DEST/.pack-id"
 mkdir -p "$DEST/Helpers" "$DEST/deps/Frameworks" "$DEST/telemetry/counters" "$DEST/logs"
 # The engine is copied (not symlinked) so the pack home stays self-contained; it is refreshed
 # when missing or when any file of the pack's Engine/ differs from what was installed (new pack version).
@@ -175,14 +249,12 @@ cp "$HERE/dxmt.conf" "$DEST/dxmt.conf.reference"
 cp "$HERE/counters.py" "$DEST/counters.py"; cp "$HERE/patch-profile.py" "$DEST/patch-profile.py"
 sed "s|__DEST__|$DEST|g" "$HERE/aoe4.sh" > "$DEST/aoe4.sh"; chmod +x "$DEST/aoe4.sh"; cp "$DEST/aoe4.sh" "$DEST/aoe4.command"
 
-PREFIX="$DEST/prefix"
 # Same environment aoe4.sh uses at runtime (engine, bundled x86_64 libs, no Mono/Gecko prompts).
 export WINEPREFIX="$PREFIX" WINEARCH=win64 WINELOADER="$DEST/Engine/bin/wine" WINESERVER="$DEST/Engine/bin/wineserver"
 export WINEDLLPATH="$DEST/dxmt:$DEST/Engine/lib/wine"
 export WINEDLLOVERRIDES="winemenubuilder.exe=;mscoree,mshtml=;gameoverlayrenderer,gameoverlayrenderer64="
 export WINEDEBUG=-all WINEMSYNC=1 WINEESYNC=0 ROSETTA_ADVERTISE_AVX=1
 export DYLD_LIBRARY_PATH="$DEST/deps/Frameworks" DYLD_FALLBACK_LIBRARY_PATH="$DEST/deps/Frameworks:/usr/lib"
-STEAMDIR="$PREFIX/drive_c/Program Files (x86)/Steam"
 
 if [ "$MODE" = clone ]; then
   # The contract has no update command: an update is this script run again, and
@@ -243,8 +315,17 @@ else
       die 10 "$STEAMDIR/steamapps/common already exists as a real folder; move it away or unset AOE4_STEAMAPPS"
     fi
     ln -sfn "$STEAMAPPS/common" "$STEAMDIR/steamapps/common"
-    n=0; for m in "$STEAMAPPS"/appmanifest_*.acf; do [ -f "$m" ] || continue; cp "$m" "$STEAMDIR/steamapps/"; n=$((n+1)); done
-    echo "  common/ -> $STEAMAPPS/common, $n app manifest(s) copied - Steam sees the game as installed (it may validate files once)"
+    # A manifest already in the prefix that is newer than the library's is Steam's
+    # record of an update made through this prefix; the library's older copy would
+    # tell Steam the game is back at the old build. Only missing or older ones go in.
+    n=0; kept=0
+    for m in "$STEAMAPPS"/appmanifest_*.acf; do
+      [ -f "$m" ] || continue
+      t="$STEAMDIR/steamapps/$(basename "$m")"
+      if [ -f "$t" ] && [ ! "$m" -nt "$t" ]; then kept=$((kept+1)); continue; fi
+      cp "$m" "$t"; n=$((n+1))
+    done
+    echo "  common/ -> $STEAMAPPS/common, $n app manifest(s) copied, $kept newer one(s) in the prefix kept - Steam sees the game as installed (it may validate files once)"
   fi
 fi
 
@@ -264,6 +345,9 @@ Game: ${EXE:-not installed yet} (sha256 $EXE_SHA)
 Settings: $DEST/aoe4.conf   Advanced: $DEST/dxmt.extra.conf   Resolved view: $DEST/aoe4.sh --print-env
 Recommended in-game: $QUALITY_HINT. V-Sync Off + Framerate Limit Unlimited are set in the profile.
 LOCAL
+# Last, once everything above has landed: this is what lets the next preflight
+# answer 11 instead of doing all of it again.
+pack_id > "$DEST/.pack-id"
 bold "Done."
 cat <<EOF
 Launch (from Terminal, or double-click aoe4.command in Finder):
@@ -272,7 +356,7 @@ A/B without the Rosetta patches (same engine, same DXMT):
   $DEST/aoe4.sh --plain
 
 Steam opens inside the pack's prefix (first launch: Steam updates itself first); sign in if asked, the game auto-launches.
-$( [ "$MODE" = fresh ] && [ -z "$STEAMAPPS" ] && echo "No game files were found on this Mac: Steam will download the game (~45 GB) into $DEST/prefix on first launch." || true )
+$( [ "$MODE" = fresh ] && [ -z "$STEAMAPPS" ] && ! prefix_has_game && echo "No game files were found on this Mac: Steam will download the game (~45 GB) into $DEST/prefix on first launch." || true )
 Frame pacing: $PACE fps by the layer. Settings: $DEST/aoe4.conf (pace/patches/hud/metalfx/pending_presents); profile summary: $DEST/README-local.txt
 Frame log: $DEST/telemetry/framelog-aoe4-d3d12-<pid>.csv, patch counters: python3 $DEST/counters.py $DEST/telemetry/counters
 EOF
