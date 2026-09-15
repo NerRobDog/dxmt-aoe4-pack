@@ -8,8 +8,8 @@ summary = "Flat 60 on M1 Pro and M5 Air, open engine, no CrossOver at runtime"
 
 notes = """
 Own Wine engine (LGPL source + the AoE IV Rosetta patch + our relocator diff) and
-x87sidecar. Setup clones an existing CrossOver bottle if it finds one, or installs
-Steam into a fresh prefix if it does not. Flat 60 on an M1 Pro 16 GB and an M5 Air;
+x87sidecar. Setup installs Steam into a fresh prefix and links the game files from
+~/Games/*/steamapps if it finds them (or clones a prefix named in AOE4_BOTTLE). Flat 60 on an M1 Pro 16 GB and an M5 Air;
 keep Fullscreen Desktop, close the browser on 16 GB, and plug in. Online 2v2 between
 two Macs works on this pack; against humans it is untested.
 """
@@ -29,7 +29,7 @@ disk_gb = 4
 
 [install]
 home_authoritative = true
-foreign_note = "writes outside the home: your CrossOver bottle (clone mode) and the game profile in Documents (.bak kept)"
+foreign_note = "writes outside the home: the game profile in Documents (.bak kept)"
 
 [paths]
 profile = "README-local.txt"

@@ -4,14 +4,14 @@
 #   - this pack's own Wine engine (Engine/: CrossOver 26.3 / Wine 11.0 + the AoE IV Rosetta patch, LGPL) and
 #     its own build of the x87sidecar helper (Helpers/, MIT) — see THIRD_PARTY.md; nothing else is downloaded
 #   - this pack's DXMT (D3D12 -> Metal) instead of D3DMetal
-#   - this pack's bundled x86_64 libraries (freetype, gnutls, ... — see deps/DEPS-MANIFEST.txt); CrossOver is NOT needed at runtime
+#   - this pack's bundled x86_64 libraries (freetype, gnutls, ... — see deps/DEPS-MANIFEST.txt); CrossOver is NOT used, at setup or at runtime
 #   - a Wine prefix with Steam + the game. Two ways to get one:
-#       clone mode (default when a CrossOver bottle with AoE IV exists): the bottle is cloned,
-#                  game files are symlinked, not copied;
-#       fresh mode (no CrossOver at all, or `setup.sh --fresh`): a new prefix is created with the
-#                  pack's engine, the official Steam installer is downloaded from Valve and run
-#                  silently, and game files are reused from an existing Steam library if one is
-#                  found (AOE4_STEAMAPPS=/path/to/steamapps) — otherwise Steam downloads the game.
+#       fresh mode (the default): a new prefix is created with the pack's engine, the official
+#                  Steam installer is downloaded from Valve and run silently, and game files are
+#                  reused from an existing Steam library - AOE4_STEAMAPPS=/path/to/steamapps, or
+#                  the first ~/Games/*/steamapps holding the game - otherwise Steam downloads it;
+#       clone mode (AOE4_BOTTLE=/path/to/prefix): an existing Wine prefix with Steam and the game,
+#                  such as a former CrossOver bottle, is cloned; game files are symlinked, not copied.
 # Nothing inside /Applications is modified.
 set -euo pipefail
 
@@ -42,25 +42,29 @@ preflight() {
   [ -f "$HERE/Helpers/x87sidecar" ] || die 12 "pack is incomplete: Helpers/x87sidecar is missing. Re-download the archive."
   /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null || die 10 "Rosetta is not installed. Run: softwareupdate --install-rosetta"
 
-  # ---- locate an existing install of the game (CrossOver bottle) and pick the mode ----
-  if [ -z "$BOTTLE" ]; then
-    shopt -s nullglob
-    for b in "$HOME/Library/Application Support/CrossOver/Bottles"/*; do
-      [ -f "$b/drive_c/Program Files (x86)/Steam/steamapps/common/Age of Empires IV/RelicCardinal.exe" ] && { BOTTLE="$b"; break; }
-    done
-    shopt -u nullglob
-  fi
+  # ---- pick the mode and locate an existing install of the game ----
+  # Nothing goes looking for a CrossOver bottle: CrossOver is not part of this pack.
+  # A prefix to clone is only ever the one named in AOE4_BOTTLE.
   if [ "$MODE" = auto ]; then
     if [ -n "$BOTTLE" ]; then MODE=clone; else MODE=fresh; fi
   fi
   STEAMAPPS="${AOE4_STEAMAPPS:-}"
   if [ "$MODE" = clone ]; then
-    [ -n "$BOTTLE" ] && [ -d "$BOTTLE/drive_c" ] || die 10 "No CrossOver bottle with Age of Empires IV (Steam) found. Set AOE4_BOTTLE=/path/to/bottle, or run setup.sh --fresh to install Steam without CrossOver."
-    echo "Mode: clone of CrossOver bottle $BOTTLE"
+    [ -n "$BOTTLE" ] && [ -d "$BOTTLE/drive_c" ] || die 10 "Clone mode needs AOE4_BOTTLE=/path/to/prefix (a Wine prefix with Steam and Age of Empires IV). Or run setup.sh --fresh to install Steam into a new prefix."
+    echo "Mode: clone of the prefix $BOTTLE"
     STEAMAPPS="$BOTTLE/drive_c/Program Files (x86)/Steam/steamapps"
   else
-    echo "Mode: fresh (no CrossOver; the pack's engine + the official Steam installer)"
+    echo "Mode: fresh (the pack's engine + the official Steam installer)"
     if [ -z "$STEAMAPPS" ] && [ -n "$BOTTLE" ]; then STEAMAPPS="$BOTTLE/drive_c/Program Files (x86)/Steam/steamapps"; fi
+    if [ -z "$STEAMAPPS" ]; then
+      # Where a Steam library sits once it has been moved out of a CrossOver bottle:
+      # ~/Games/<bottle name>/steamapps. Reading it is all that happens here.
+      shopt -s nullglob
+      for g in "$HOME/Games"/*/steamapps; do
+        [ -f "$g/common/Age of Empires IV/RelicCardinal.exe" ] && { STEAMAPPS="$g"; break; }
+      done
+      shopt -u nullglob
+    fi
     if [ -n "$STEAMAPPS" ]; then
       [ -d "$STEAMAPPS/common" ] || die 10 "AOE4_STEAMAPPS=$STEAMAPPS has no common/ folder"
       echo "Game files: reusing the Steam library at $STEAMAPPS (linked, not copied)"
@@ -76,7 +80,7 @@ preflight() {
     [ "$EXE_SHA" = "$EXE_SHA_EXPECTED" ] || die 10 "RelicCardinal.exe sha256 is $EXE_SHA, expected $EXE_SHA_EXPECTED. The game was updated; the softfault/code-cache patch will NOT engage for this build (it disables itself). Wait for an updated pack."
   fi
 
-  if pgrep -q wineserver; then die 10 "wineserver is running. Quit CrossOver / the bottle's Steam first."; fi
+  if pgrep -q wineserver; then die 10 "wineserver is running. Quit the other Wine session (and its Steam) first."; fi
 
 
   # The helper is probed here, against the unpacked pack, rather than after the

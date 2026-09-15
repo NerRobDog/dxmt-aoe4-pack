@@ -30,13 +30,14 @@ Three pieces, all with source, all inside the pack (~450 MB unpacked):
    Rosetta's decoder in that process only. No SIP changes, no root, nothing
    system-wide. Source: `https://github.com/NerRobDog/x87sidecar`.
 
-You bring: a Mac with Apple Silicon on macOS 26+ and the game — either a CrossOver
-bottle where AoE IV (Steam) is installed (used only as the source of the game files), or
-nothing at all: without CrossOver, setup.sh creates the prefix and installs the official
-Steam client into it, and Steam downloads the game. CrossOver is never needed at runtime.
+You bring: a Mac with Apple Silicon on macOS 26+ and the game — either a Steam library
+where AoE IV is installed (`~/Games/*/steamapps` or `AOE4_STEAMAPPS`, used only as the
+source of the game files), or nothing at all: setup.sh creates the prefix and installs the
+official Steam client into it, and Steam downloads the game. CrossOver is not used, at
+setup or at runtime.
 The engine, the helper and the x86_64 libraries the engine needs (freetype, gnutls,
 inotify, …, in `deps/`) are in the pack; the only download is Valve's own Steam
-installer in the no-CrossOver case. See `INSTALL.md`. Releases: https://github.com/NerRobDog/dxmt-aoe4-pack/releases — or `bash bootstrap.sh` from a clone of this repo.
+installer. See `INSTALL.md`. Releases: https://github.com/NerRobDog/dxmt-aoe4-pack/releases — or `bash bootstrap.sh` from a clone of this repo.
 
 ## Numbers (1v1 skirmish vs AI; the multi-hour runs: online 2v2 between two Macs on this pack vs AI — DXMT HUD + frame log)
 
@@ -74,13 +75,13 @@ panel refresh collapses (50 on a 60 Hz panel → 30 fps); the CPU pacer does not
 ## Rollback
 
 Nothing is installed system-wide. Delete the pack home (default `~/aoe4-pack`).
-Your CrossOver bottle (or the Steam library the game files were linked from) is not
+The Steam library the game files were linked from (or a prefix cloned with `AOE4_BOTTLE`) is not
 modified, with one honest exception: Wine links the prefix's `Documents` to your real
 `~/Documents`, so the game profile
 (`~/Documents/My Games/Age of Empires IV/configuration_system.lua`) is shared between
-the bottle and the pack. The pack edits three values there (V-Sync Off, Framerate Limit
+that library's own Wine setup and the pack. The pack edits three values there (V-Sync Off, Framerate Limit
 Unlimited, Exclusive → Fullscreen Desktop) and leaves a backup next to it
-(`configuration_system.lua.aoe4-pack.bak`); restore it if you go back to plain CrossOver
+(`configuration_system.lua.aoe4-pack.bak`); restore it if you go back to another setup
 and want the old values.
 
 ## Support

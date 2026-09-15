@@ -5,7 +5,7 @@
 #   ./uninstall.sh --yes         actually remove it
 #
 # The pack owns exactly one directory: the home it was given. The game's own
-# files are not in it. They live in a Steam library — a CrossOver bottle, a
+# files are not in it. They live in a Steam library — a folder under ~/Games, a
 # native Steam install, or a library satoru manages — and reach the prefix as a
 # symlink. Removing a symlink removes the link, so those files are never at
 # risk here; `du` is told not to follow them either, or the report would claim

@@ -3,16 +3,16 @@
 ## You need
 
 - Mac with Apple Silicon, **macOS 26 or newer**, Rosetta installed.
-- The game, one of two ways:
-  - **CrossOver bottle** with **Age of Empires IV (Steam)** installed (clone mode, the
-    default when such a bottle exists): the bottle is only read, game files are symlinked
-    into a clone. CrossOver itself is not used at runtime — the engine's x86_64 libraries
-    ship in `deps/`.
-  - **No CrossOver** (fresh mode, automatic when no bottle is found, or `setup.sh --fresh`):
-    setup.sh creates a Wine prefix with the pack's engine, downloads the official Steam
-    installer from Valve (2.4 MB) and installs it silently. Game files are reused from any
-    Steam library it finds (a CrossOver bottle, or `AOE4_STEAMAPPS=/path/to/steamapps`);
-    otherwise Steam downloads the game (~45 GB) on first launch. You sign in to Steam once.
+- The game, one of two ways (CrossOver is not used either way, at setup or at runtime —
+  the engine's x86_64 libraries ship in `deps/`):
+  - **Fresh prefix** (the default): setup.sh creates a Wine prefix with the pack's engine,
+    downloads the official Steam installer from Valve (2.4 MB) and installs it silently.
+    Game files are reused from a Steam library it finds (`~/Games/*/steamapps`, or
+    `AOE4_STEAMAPPS=/path/to/steamapps`); otherwise Steam downloads the game (~45 GB) on
+    first launch. You sign in to Steam once.
+  - **An existing Wine prefix** with **Age of Empires IV (Steam)** installed, such as a
+    former CrossOver bottle (clone mode, `AOE4_BOTTLE=/path/to/prefix`): the prefix is
+    only read, game files are symlinked into a clone.
 - ~4 GB free: the pack itself is ~450 MB unpacked (Wine engine + helper + DXMT +
   libraries), plus the engine copy and the prefix in `~/aoe4-pack` (~3 GB for a bottle
   clone, ~1.5 GB fresh; the 49 GB of game files are symlinked, or downloaded by Steam if
@@ -21,7 +21,7 @@
 ## Steps
 
 1. Download the latest `dxmt-aoe4-pack` tarball from the Releases page and unzip it (double-click) → folder `dxmt-aoe4-pack`. (Or clone this repo and run `bash bootstrap.sh`: it downloads and verifies the archive and runs setup for you.)
-2. Quit CrossOver completely (the bottle's Steam too). On a 16 GB Mac also close the browser before playing — the game needs 4–5 GB resident, and memory pressure shows up as multi-hundred-ms stalls.
+2. Quit any other Wine session and its Steam. On a 16 GB Mac also close the browser before playing — the game needs 4–5 GB resident, and memory pressure shows up as multi-hundred-ms stalls.
 3. Terminal:
 
    ```
@@ -32,9 +32,9 @@
    It checks macOS/Rosetta, finds the game, verifies the game exe build, copies the
    pack's Wine engine (`Engine/`) + Rosetta helper (`Helpers/`) + bundled libraries
    into `~/aoe4-pack`, installs this pack's DXMT, probes the helper against your
-   Rosetta runtime, and clones the bottle prefix — or, without CrossOver, creates a
-   prefix and installs Steam into it (`bash setup.sh --fresh` forces this even if a
-   bottle exists). Overrides if auto-detection misses: `AOE4_BOTTLE=…`,
+   Rosetta runtime, and creates a prefix and installs Steam into it — or clones the
+   prefix named by `AOE4_BOTTLE` (`bash setup.sh --fresh` forces a new prefix even then).
+   Overrides if auto-detection misses: `AOE4_BOTTLE=…`,
    `AOE4_STEAMAPPS=…` (an existing Steam library to reuse), `AOE4_PACK_HOME=…`,
    `AOE4_STEAM_SETUP=…` (a SteamSetup.exe you already have, skips the download).
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Read AoE lab diagnostic counters written by the GameToMac Wine patch (AOELAB_COUNTERS_DIR)."""
+"""Read AoE lab diagnostic counters written by the AoE IV Rosetta patch in the pack's own Wine build (AOELAB_COUNTERS_DIR)."""
 import glob, os, struct, sys
-D = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/ow2/lab/telemetry/g2m-counters')
+D = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/aoe4-pack/telemetry/counters')
 DIAG = ['PROTECT_CALLS','PROTECT_EXEC_REQUESTED','PROTECT_SUCCESS','PROTECT_EXEC_CHANGED','PROTECT_BYTES',
  'WRITE_CALLS','WRITE_BYTES','ROSETTA_TOGGLE_BATCHES','FLUSH_CALLS','SEGV_SIGNALS','ILLEGAL_TRAPS',
  'GENERAL_PROTECTION_TRAPS','PAGE_FAULTS','PAGE_READ_FAULTS','PAGE_WRITE_FAULTS','PAGE_EXECUTE_FAULTS',
