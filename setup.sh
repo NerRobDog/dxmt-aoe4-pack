@@ -136,6 +136,12 @@ preflight() {
   fi
   EXE=""; EXE_SHA="(game not installed yet)"
   [ -n "$STEAMAPPS" ] && [ -f "$STEAMAPPS/common/Age of Empires IV/RelicCardinal.exe" ] && EXE="$STEAMAPPS/common/Age of Empires IV/RelicCardinal.exe"
+  # A rerun keeps the game already in the prefix and no longer reads ~/Games, but
+  # the patch is still wired to one build: the prefix's own exe is the one to check,
+  # or a Steam update would pass unnoticed.
+  if [ -z "$EXE" ] && [ -z "$STEAMAPPS" ] && [ -f "$STEAMDIR/steamapps/common/Age of Empires IV/RelicCardinal.exe" ]; then
+    EXE="$STEAMDIR/steamapps/common/Age of Empires IV/RelicCardinal.exe"
+  fi
   if [ -n "$EXE" ]; then
     bold "Verifying game build (the Wine patch is hard-wired to one exe build)..."
     EXE_SHA=$(shasum -a 256 "$EXE" | awk '{print $1}')
