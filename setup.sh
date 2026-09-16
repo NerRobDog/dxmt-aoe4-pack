@@ -149,7 +149,33 @@ preflight() {
     [ "$EXE_SHA" = "$EXE_SHA_EXPECTED" ] || die 10 "RelicCardinal.exe sha256 is $EXE_SHA, expected $EXE_SHA_EXPECTED. The game was updated; the softfault/code-cache patch will NOT engage for this build (it disables itself). Wait for an updated pack."
   fi
 
-  if pgrep -q wineserver; then die 10 "wineserver is running. Quit the other Wine session (and its Steam) first."; fi
+  # Refuse only over a wineserver that serves the prefix this run is about to
+  # touch: this home's own prefix (a session still running from an earlier
+  # launch) or, in clone mode, the bottle being copied, whose registry must not
+  # change under the copy. Wine homes of other packs and other games coexist on
+  # one Mac, and a wineserver of theirs is no reason to refuse this one. Which
+  # prefix a wineserver serves is read from its own WINEPREFIX, as
+  # migrate-prefix-user.sh does. The value is resolved to a physical directory
+  # before comparing, because Wine takes the same prefix with a trailing slash
+  # or through a symlink. Matching on the wineserver binary's path would miss
+  # the clone case: the bottle's wineserver is never this pack's Engine/ copy.
+  wineserver_serving() {
+    local real pid line wp
+    [ -d "$1" ] || return 1
+    real="$(cd "$1" && pwd -P)"
+    for pid in $(pgrep -f 'wineserver' 2>/dev/null); do
+      line=" $(ps eww -o command= -p "$pid" 2>/dev/null) "
+      case "$line" in *" WINEPREFIX="*) ;; *) continue ;; esac
+      wp="${line#* WINEPREFIX=}"; wp="${wp%% *}"
+      wp="$(cd "$wp" 2>/dev/null && pwd -P)" || continue
+      [ "$wp" = "$real" ] && return 0
+    done
+    return 1
+  }
+  wineserver_serving "$PREFIX" && die 10 "wineserver is running against $PREFIX. Quit the other Wine session (and its Steam) first."
+  if [ "$MODE" = clone ]; then
+    wineserver_serving "$BOTTLE" && die 10 "wineserver is running against the bottle $BOTTLE being cloned. Quit the other Wine session (and its Steam) first."
+  fi
 
 
   # The helper is probed here, against the unpacked pack, rather than after the

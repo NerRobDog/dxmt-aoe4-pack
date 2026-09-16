@@ -12,7 +12,7 @@ set -u
 cd "$(dirname "$0")"
 
 fail=0
-for t in test-migrate-prefix-user.sh test-make-pack.sh; do
+for t in test-migrate-prefix-user.sh test-make-pack.sh test-setup-wineserver-guard.sh; do
     echo "== $t"
     bash "$t" || fail=1
     echo
