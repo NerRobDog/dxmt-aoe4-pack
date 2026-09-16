@@ -149,14 +149,29 @@ Build refused."
 fi
 
 echo "Hashing..."
+# LC_ALL=C: an unset or inherited locale makes sort's collation - and so the
+# entry order of SHA256SUMS, and so its own bytes - depend on the machine that
+# built the release. The pack_id a home records is a hash of this file; two
+# builds from the same commit must produce the same one everywhere.
 ( cd "$STAGE" && find . -type f ! -name SHA256SUMS -print0 \
-    | sort -z | xargs -0 shasum -a 256 > SHA256SUMS )
+    | LC_ALL=C sort -z | xargs -0 shasum -a 256 > SHA256SUMS )
 
 mkdir -p "$OUT"
 TARBALL="$OUT/$NAME-$VERSION.tar.gz"
 rm -f "$TARBALL"
 echo "Building $TARBALL..."
-COPYFILE_DISABLE=1 tar -czf "$TARBALL" -C "$(dirname "$STAGE")" "$NAME"
+# Reproducible: the same inputs give the same bytes. Three things made it vary -
+# file times, the order bsdtar walks a directory, and gzip's own timestamp - and
+# two more would on another machine: owners and modes.
+EPOCH="${SOURCE_DATE_EPOCH:-$(cd "$HERE" && git log -1 --format=%ct)}"
+STAMP="$(date -u -r "$EPOCH" +%Y%m%d%H%M.%S)"
+chmod -R u+rwX,go+rX,go-w "$STAGE"
+find "$STAGE" -exec env TZ=UTC0 touch -h -t "$STAMP" {} +
+LIST="$(dirname "$STAGE")/.list"
+( cd "$(dirname "$STAGE")" && find "$NAME" | LC_ALL=C sort ) > "$LIST"
+COPYFILE_DISABLE=1 tar --no-mac-metadata --no-xattrs --no-acls --no-fflags \
+    --uid 0 --gid 0 --uname root --gname wheel -n \
+    -cf - -C "$(dirname "$STAGE")" -T "$LIST" | gzip -n -9 > "$TARBALL"
 
 if tar -tzf "$TARBALL" | grep -q '^\._\|/\._'; then
   die "the tarball contains AppleDouble entries — COPYFILE_DISABLE did not take"
