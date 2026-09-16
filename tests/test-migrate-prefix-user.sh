@@ -97,7 +97,7 @@ SH
 
 prefix="$work/old"
 make_old_prefix "$prefix"
-out=$(bash migrate-prefix-user.sh "$prefix" 2>&1); code=$?
+out=$(bash migrate-prefix-user.sh "$prefix" satoru 2>&1); code=$?
 
 check "a prefix from the old engine migrates" "$code" 0
 check "  the profile directory is renamed" \
@@ -129,7 +129,7 @@ check "  %USERPROFILE% entries are left as they are" \
 
 # ------------------------------------------------------------- running twice
 
-out=$(bash migrate-prefix-user.sh "$prefix" 2>&1); code=$?
+out=$(bash migrate-prefix-user.sh "$prefix" satoru 2>&1); code=$?
 check "a second run has nothing to do" "$code" 0
 check "  and says nothing" "$out" ""
 check "  and the profile is still there" \
@@ -139,7 +139,7 @@ check "  and the profile is still there" \
 
 prefix="$work/dry"
 make_old_prefix "$prefix"
-out=$(bash migrate-prefix-user.sh --dry-run "$prefix" 2>&1); code=$?
+out=$(bash migrate-prefix-user.sh --dry-run "$prefix" satoru 2>&1); code=$?
 check "a dry run reports" "$code" 0
 check "  and renames nothing" \
     "$([ -d "$prefix/drive_c/users/crossover" ] && echo yes || echo no)" yes
@@ -149,10 +149,10 @@ check "  and rewrites nothing" \
 # -------------------------------------------------- a prefix that is not one
 
 check "a prefix that does not exist is not an error" \
-    "$(bash migrate-prefix-user.sh "$work/absent" >/dev/null 2>&1; echo $?)" 0
+    "$(bash migrate-prefix-user.sh "$work/absent" satoru >/dev/null 2>&1; echo $?)" 0
 mkdir -p "$work/empty"
 check "a directory that is not a prefix is not an error" \
-    "$(bash migrate-prefix-user.sh "$work/empty" >/dev/null 2>&1; echo $?)" 0
+    "$(bash migrate-prefix-user.sh "$work/empty" satoru >/dev/null 2>&1; echo $?)" 0
 
 # ------------------------------------------------------ a prefix it refuses
 
@@ -162,7 +162,7 @@ prefix="$work/both"
 make_old_prefix "$prefix"
 mkdir -p "$prefix/drive_c/users/satoru/Documents"
 echo "somebody else's" > "$prefix/drive_c/users/satoru/Documents/configuration_system.lua"
-out=$(bash migrate-prefix-user.sh "$prefix" 2>&1); code=$?
+out=$(bash migrate-prefix-user.sh "$prefix" satoru 2>&1); code=$?
 check "two profiles at once is refused" "$([ "$code" != 0 ] && echo refused)" refused
 check "  and it names both" "$(echo "$out" | grep -c 'satoru')" 1
 check "  and nothing was moved" \
@@ -177,7 +177,7 @@ check "  and nothing was rewritten" \
 prefix="$work/half"
 make_old_prefix "$prefix"
 mv "$prefix/drive_c/users/crossover" "$prefix/drive_c/users/satoru"
-out=$(bash migrate-prefix-user.sh "$prefix" 2>&1); code=$?
+out=$(bash migrate-prefix-user.sh "$prefix" satoru 2>&1); code=$?
 check "a half-migrated prefix is finished" "$code" 0
 check "  the registry is rewritten" \
     "$(grep -ci 'users\\\\crossover' "$prefix"/*.reg | awk -F: '{s+=$2} END {print s+0}')" 0
@@ -188,7 +188,7 @@ prefix="$work/fresh"
 mkdir -p "$prefix/drive_c/users/satoru" "$prefix/dosdevices"
 printf 'WINE REGISTRY Version 2\n' > "$prefix/user.reg"
 printf 'WINE REGISTRY Version 2\n' > "$prefix/system.reg"
-out=$(bash migrate-prefix-user.sh "$prefix" 2>&1); code=$?
+out=$(bash migrate-prefix-user.sh "$prefix" satoru 2>&1); code=$?
 check "a prefix made by the new engine is left alone" "$code" 0
 check "  and nothing is said about it" "$out" ""
 
@@ -201,7 +201,7 @@ check "  and nothing is said about it" "$out" ""
 prefix="$work/wineserver-unmigrated"
 make_old_prefix "$prefix"
 install_wineserver_shim "$prefix"
-out=$(PATH="$work/bin:$PATH" bash migrate-prefix-user.sh "$prefix" 2>&1); code=$?
+out=$(PATH="$work/bin:$PATH" bash migrate-prefix-user.sh "$prefix" satoru 2>&1); code=$?
 check "a running wineserver blocks an unmigrated prefix" "$code" 3
 check "  and nothing was moved" \
     "$([ -d "$prefix/drive_c/users/crossover" ] && echo yes || echo no)" yes
@@ -210,11 +210,43 @@ check "  and nothing was rewritten" \
 
 prefix="$work/wineserver-migrated"
 make_old_prefix "$prefix"
-bash migrate-prefix-user.sh "$prefix" >/dev/null 2>&1
+bash migrate-prefix-user.sh "$prefix" satoru >/dev/null 2>&1
 install_wineserver_shim "$prefix"
-out=$(PATH="$work/bin:$PATH" bash migrate-prefix-user.sh "$prefix" 2>&1); code=$?
+out=$(PATH="$work/bin:$PATH" bash migrate-prefix-user.sh "$prefix" satoru 2>&1); code=$?
 check "a running wineserver does not block an already-migrated prefix" "$code" 0
 check "  and says nothing" "$out" ""
 rm -rf "$work/bin"
+
+# ------------------------------- an engine that still uses the old name
+
+# The name comes from the engine, and a pack that ships an older engine (the
+# ones currently staged: AoE4 cf465d4, Prime World 711c6fc) declares none.
+# Renaming under such an engine would cause the loss this script exists to
+# prevent: the engine would look for crossover, find nothing, and build an
+# empty profile beside the renamed one. So without a name, nothing happens.
+prefix="$work/no-engine-name"
+make_old_prefix "$prefix"
+out=$(bash migrate-prefix-user.sh "$prefix" 2>&1); code=$?
+check "no profile name from the engine means no migration" "$code" 0
+check "  and it is silent about it" "$out" ""
+check "  and the old profile is untouched" \
+    "$([ -d "$prefix/drive_c/users/crossover" ] && echo yes || echo no)" yes
+check "  and the registry is untouched" \
+    "$(grep -c '"USERNAME"="crossover"' "$prefix/user.reg")" 1
+
+out=$(bash migrate-prefix-user.sh "$prefix" "" 2>&1); code=$?
+check "an empty profile name is the same as none" "$code" 0
+check "  still untouched" \
+    "$([ -d "$prefix/drive_c/users/crossover" ] && echo yes || echo no)" yes
+
+out=$(bash migrate-prefix-user.sh "$prefix" crossover 2>&1); code=$?
+check "an engine that declares the old name changes nothing" "$code" 0
+check "  still untouched" \
+    "$([ -d "$prefix/drive_c/users/crossover" ] && echo yes || echo no)" yes
+
+out=$(bash migrate-prefix-user.sh "$prefix" "../escape" 2>&1); code=$?
+check "a profile name that is not one is refused" "$([ "$code" != 0 ] && echo refused)" refused
+check "  and nothing was moved" \
+    "$([ -d "$prefix/drive_c/users/crossover" ] && echo yes || echo no)" yes
 
 exit "$fail"

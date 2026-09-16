@@ -271,9 +271,12 @@ export DYLD_LIBRARY_PATH="$DEST/deps/Frameworks" DYLD_FALLBACK_LIBRARY_PATH="$DE
 # kept prefix (system.reg present, steam.exe missing) from having wineboot -u
 # build a second, empty "satoru" profile beside the old one. A prefix that does
 # not exist yet, or one this pack's own engine already created, costs one
-# directory test.
-bash "$HERE/migrate-prefix-user.sh" "$PREFIX" \
-  || die 1 "the prefix at $PREFIX could not be migrated to the satoru profile"
+# directory test. The name comes from the engine just laid out in $DEST, not
+# from this script: under an engine that still answers "crossover" this file
+# is absent and nothing is renamed.
+PROFILE_USER="$(tr -d '[:space:]' < "$DEST/Engine/.profile-user" 2>/dev/null || true)"
+bash "$HERE/migrate-prefix-user.sh" "$PREFIX" "$PROFILE_USER" \
+  || die 1 "the prefix at $PREFIX could not be migrated to the $PROFILE_USER profile"
 
 if [ "$MODE" = clone ]; then
   # The contract has no update command: an update is this script run again, and
@@ -353,9 +356,12 @@ fi
 # bottle's C:\users\crossover. Left alone, the first launch of this engine
 # would still boot into that prefix, grow a second, empty "satoru" profile next
 # to it and leave the player's saves behind, unseen - so this runs before
-# patch-profile.py's users/* glob below ever looks for a profile to patch.
-bash "$HERE/migrate-prefix-user.sh" "$PREFIX" \
-  || die 1 "the prefix at $PREFIX could not be migrated to the satoru profile"
+# patch-profile.py's users/* glob below ever looks for a profile to patch. Same
+# engine-declared name as above; re-read in case anything reinstalled Engine/
+# between the two calls.
+PROFILE_USER="$(tr -d '[:space:]' < "$DEST/Engine/.profile-user" 2>/dev/null || true)"
+bash "$HERE/migrate-prefix-user.sh" "$PREFIX" "$PROFILE_USER" \
+  || die 1 "the prefix at $PREFIX could not be migrated to the $PROFILE_USER profile"
 
 # ---- in-game settings: V-Sync off, framerate limit unlimited, fullscreen desktop ----
 # The layer paces the frame; the game's own V-Sync (SyncInterval=1) would hold

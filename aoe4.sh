@@ -67,9 +67,13 @@ export WINEPREFIX="$DEST/prefix"
 # the rename happens here too, not only during setup. An already-named prefix
 # costs one directory test, and a launch while Steam is already up in this
 # same prefix (the applaunch below is forwarded to it) is exactly that case.
+# The name comes from the engine in this home, never from this script:
+# renaming the profile under an engine that still answers "crossover" would
+# cause the very loss the rename exists to prevent.
+PROFILE_USER="$(tr -d '[:space:]' < "$DEST/Engine/.profile-user" 2>/dev/null || true)"
 if [ -x "$DEST/migrate-prefix-user.sh" ]; then
-  bash "$DEST/migrate-prefix-user.sh" "$WINEPREFIX" || {
-    echo "[aoe4-pack] the Windows profile in $WINEPREFIX could not be renamed to satoru; not starting." >&2
+  bash "$DEST/migrate-prefix-user.sh" "$WINEPREFIX" "$PROFILE_USER" || {
+    echo "[aoe4-pack] the Windows profile in $WINEPREFIX could not be renamed to $PROFILE_USER; not starting." >&2
     exit 12
   }
 fi
