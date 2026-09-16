@@ -119,6 +119,35 @@ than the manifest pointing at it." ;;
   esac
 fi
 
+# The profile rename is the one thing in this pack that can destroy what the
+# player already has: run against an engine that still calls the profile
+# crossover, it moves the directory out from under that engine, which then finds
+# nothing and builds an empty profile beside it. The guard is that the name comes
+# from Engine/.profile-user and an absent file means no rename - and that guard
+# is worth proving on the staged copy rather than trusting, because the version
+# without it existed in prime-world-pack's repository for two commits and looked
+# correct (found and fixed there first: 276a5e8, proven here: 5f4bd04).
+if [ -f "$STAGE/migrate-prefix-user.sh" ]; then
+  echo "Proving the staged migration does nothing without a name from the engine..."
+  probe="$(mktemp -d)"
+  mkdir -p "$probe/drive_c/users/crossover/Documents"
+  printf 'WINE REGISTRY Version 2\n"USERNAME"="crossover"\n' > "$probe/system.reg"
+  printf 'WINE REGISTRY Version 2\n"USERNAME"="crossover"\n' > "$probe/user.reg"
+  set +e
+  out="$(bash "$STAGE/migrate-prefix-user.sh" "$probe" 2>&1)"; code=$?
+  set -e
+  [ "$code" = 0 ] || die "the staged migrate-prefix-user.sh answered $code with no profile
+name; it must do nothing and say nothing. Build refused."
+  [ -z "$out" ] || die "the staged migrate-prefix-user.sh spoke with no profile name:
+$out
+It must be silent for engines that do not declare one. Build refused."
+  [ -d "$probe/drive_c/users/crossover" ] || die "the staged migrate-prefix-user.sh renamed
+the profile with no name declared by the engine. That is the failure this guard
+exists for: shipped with an older engine it would strand the player's settings.
+Build refused."
+  rm -rf "$probe"
+fi
+
 echo "Hashing..."
 ( cd "$STAGE" && find . -type f ! -name SHA256SUMS -print0 \
     | sort -z | xargs -0 shasum -a 256 > SHA256SUMS )
