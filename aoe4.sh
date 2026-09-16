@@ -61,6 +61,18 @@ GEN="$DEST/dxmt.generated.conf"
 } > "$GEN"
 
 export WINEPREFIX="$DEST/prefix"
+# A home installed before the engine renamed the Windows profile still holds
+# C:\users\crossover. Letting this engine open it would leave the player's
+# settings, saves and screenshots in a profile nothing looks at any more, so
+# the rename happens here too, not only during setup. An already-named prefix
+# costs one directory test, and a launch while Steam is already up in this
+# same prefix (the applaunch below is forwarded to it) is exactly that case.
+if [ -x "$DEST/migrate-prefix-user.sh" ]; then
+  bash "$DEST/migrate-prefix-user.sh" "$WINEPREFIX" || {
+    echo "[aoe4-pack] the Windows profile in $WINEPREFIX could not be renamed to satoru; not starting." >&2
+    exit 12
+  }
+fi
 export WINELOADER="$E/bin/wine"
 export WINESERVER="$E/bin/wineserver"
 export WINEDLLPATH="$DEST/dxmt:$E/lib/wine"

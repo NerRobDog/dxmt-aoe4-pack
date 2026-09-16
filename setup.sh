@@ -42,7 +42,7 @@ pack_id() {
   if [ -f "$HERE/SHA256SUMS" ]; then
     shasum -a 256 "$HERE/SHA256SUMS"
   else
-    { cat "$HERE/setup.sh" "$HERE/aoe4.sh" "$HERE/patch-profile.py" "$HERE/counters.py" 2>/dev/null || true; } | shasum -a 256
+    { cat "$HERE/setup.sh" "$HERE/aoe4.sh" "$HERE/patch-profile.py" "$HERE/counters.py" "$HERE/migrate-prefix-user.sh" 2>/dev/null || true; } | shasum -a 256
   fi | cut -d' ' -f1
 }
 
@@ -64,6 +64,7 @@ prefix_has_game() {
 home_is_complete() {
   [ "$(cat "$DEST/.pack-id" 2>/dev/null)" = "$(pack_id)" ] || return 1
   [ -x "$DEST/aoe4.sh" ] && [ -f "$DEST/aoe4.conf" ] && [ -f "$DEST/patch-profile.py" ] || return 1
+  [ -x "$DEST/migrate-prefix-user.sh" ] || return 1
   [ -x "$DEST/Engine/bin/wine" ] && [ -f "$DEST/Engine/lib/wine/x86_64-unix/ntdll.so" ] || return 1
   [ -x "$DEST/Helpers/x87sidecar" ] || return 1
   [ -f "$DEST/deps/Frameworks/libgnutls.30.dylib" ] && [ -f "$DEST/deps/Frameworks/libinotify.dylib" ] || return 1
@@ -253,6 +254,7 @@ else
 fi
 cp "$HERE/dxmt.conf" "$DEST/dxmt.conf.reference"
 cp "$HERE/counters.py" "$DEST/counters.py"; cp "$HERE/patch-profile.py" "$DEST/patch-profile.py"
+cp "$HERE/migrate-prefix-user.sh" "$DEST/migrate-prefix-user.sh"; chmod +x "$DEST/migrate-prefix-user.sh"
 sed "s|__DEST__|$DEST|g" "$HERE/aoe4.sh" > "$DEST/aoe4.sh"; chmod +x "$DEST/aoe4.sh"; cp "$DEST/aoe4.sh" "$DEST/aoe4.command"
 
 # Same environment aoe4.sh uses at runtime (engine, bundled x86_64 libs, no Mono/Gecko prompts).
@@ -261,6 +263,17 @@ export WINEDLLPATH="$DEST/dxmt:$DEST/Engine/lib/wine"
 export WINEDLLOVERRIDES="winemenubuilder.exe=;mscoree,mshtml=;gameoverlayrenderer,gameoverlayrenderer64="
 export WINEDEBUG=-all WINEMSYNC=1 WINEESYNC=0 ROSETTA_ADVERTISE_AVX=1
 export DYLD_LIBRARY_PATH="$DEST/deps/Frameworks" DYLD_FALLBACK_LIBRARY_PATH="$DEST/deps/Frameworks:/usr/lib"
+
+# A prefix kept from an earlier run (clone mode: "already exists - keeping it";
+# fresh mode: "already has Steam - keeping it") can still be one an old,
+# crossover-answering engine built or last touched. Migrating it here, before
+# wineboot or Steam ever runs against it below, is what keeps a half-broken
+# kept prefix (system.reg present, steam.exe missing) from having wineboot -u
+# build a second, empty "satoru" profile beside the old one. A prefix that does
+# not exist yet, or one this pack's own engine already created, costs one
+# directory test.
+bash "$HERE/migrate-prefix-user.sh" "$PREFIX" \
+  || die 1 "the prefix at $PREFIX could not be migrated to the satoru profile"
 
 if [ "$MODE" = clone ]; then
   # The contract has no update command: an update is this script run again, and
@@ -334,6 +347,15 @@ else
     echo "  common/ -> $STEAMAPPS/common, $n app manifest(s) copied, $kept newer one(s) in the prefix kept - Steam sees the game as installed (it may validate files once)"
   fi
 fi
+
+# The prefix just built or cloned above: a fresh wineboot -u already answers
+# "satoru" and this is a no-op, but a clone just rsynced in a former CrossOver
+# bottle's C:\users\crossover. Left alone, the first launch of this engine
+# would still boot into that prefix, grow a second, empty "satoru" profile next
+# to it and leave the player's saves behind, unseen - so this runs before
+# patch-profile.py's users/* glob below ever looks for a profile to patch.
+bash "$HERE/migrate-prefix-user.sh" "$PREFIX" \
+  || die 1 "the prefix at $PREFIX could not be migrated to the satoru profile"
 
 # ---- in-game settings: V-Sync off, framerate limit unlimited, fullscreen desktop ----
 # The layer paces the frame; the game's own V-Sync (SyncInterval=1) would hold
