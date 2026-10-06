@@ -1,5 +1,6 @@
 #!/bin/bash
-# dxmt-aoe4-pack launcher (installed copy lives in the pack home; setup.sh fills in __DEST__).
+# dxmt-aoe4-pack launcher (installed copy lives in the pack home; the home is wherever this file is,
+# so the home can be moved or mounted elsewhere - an image at /Volumes/satoru-<game> - without a re-install).
 # $DEST/Engine and $DEST/Helpers/x87sidecar are the pack's own Wine build and sidecar helper,
 # copied there from the pack by setup.sh — nothing outside the pack home is used at runtime.
 #
@@ -9,7 +10,7 @@
 #   --print-env  show the resolved settings/env and the generated dxmt.conf, do not launch.
 # Advanced DXMT options go to $DEST/dxmt.extra.conf (appended verbatim to the generated dxmt.conf).
 set -u
-DEST="__DEST__"
+DEST="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 E="$DEST/Engine"
 DEPS="$DEST/deps/Frameworks"
 CONF="$DEST/aoe4.conf"

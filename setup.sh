@@ -281,7 +281,7 @@ fi
 cp "$HERE/dxmt.conf" "$DEST/dxmt.conf.reference"
 cp "$HERE/counters.py" "$DEST/counters.py"; cp "$HERE/patch-profile.py" "$DEST/patch-profile.py"
 cp "$HERE/migrate-prefix-user.sh" "$DEST/migrate-prefix-user.sh"; chmod +x "$DEST/migrate-prefix-user.sh"
-sed "s|__DEST__|$DEST|g" "$HERE/aoe4.sh" > "$DEST/aoe4.sh"; chmod +x "$DEST/aoe4.sh"; cp "$DEST/aoe4.sh" "$DEST/aoe4.command"
+cp "$HERE/aoe4.sh" "$DEST/aoe4.sh"; chmod +x "$DEST/aoe4.sh"; cp "$DEST/aoe4.sh" "$DEST/aoe4.command"
 
 # Same environment aoe4.sh uses at runtime (engine, bundled x86_64 libs, no Mono/Gecko prompts).
 export WINEPREFIX="$PREFIX" WINEARCH=win64 WINELOADER="$DEST/Engine/bin/wine" WINESERVER="$DEST/Engine/bin/wineserver"
